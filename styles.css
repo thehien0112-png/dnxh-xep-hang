@@ -1260,6 +1260,34 @@ body {
   }
 }
 
+/* ────────────────────────── Standalone tweaks button (GitHub Pages) ────────────────────────── */
+.standalone-tweaks-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483645;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--primary);
+  color: white;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(13, 107, 94, 0.3);
+  transition: transform 120ms ease, background 120ms ease;
+}
+.standalone-tweaks-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(13, 107, 94, 0.4);
+}
+.standalone-tweaks-btn:active { transform: translateY(0); }
+
 /* ────────────────────────── Responsive ────────────────────────── */
 @media (max-width: 1200px) {
   .self-card { grid-template-columns: 1fr; gap: 14px; }

@@ -751,7 +751,37 @@ function App() {
           />
         </TweakSection>
       </TweaksPanel>
+
+      <StandaloneTweaksButton/>
     </div>
+  );
+}
+
+// Floating "Tuỳ chỉnh" button — appears only when the page is served standalone
+// (e.g. GitHub Pages), where the host's edit-mode toggle isn't available.
+function StandaloneTweaksButton() {
+  const [standalone, setStandalone] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.top === window.self) setStandalone(true);
+    } catch (e) {
+      // cross-origin frame access throws — assume standalone
+      setStandalone(true);
+    }
+  }, []);
+  if (!standalone) return null;
+  return (
+    <button
+      className="standalone-tweaks-btn"
+      onClick={() => window.postMessage({ type: '__activate_edit_mode' }, '*')}
+      title="Mở bảng tuỳ chỉnh hiển thị"
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 00.4 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.4 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.4l-.1.1A2 2 0 113.3 17.1l.1-.1a1.7 1.7 0 00.4-1.9 1.7 1.7 0 00-1.5-1H2a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.4-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.4h.1a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.4l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.4 1.9v.1a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>
+      </svg>
+      Tuỳ chỉnh
+    </button>
   );
 }
 

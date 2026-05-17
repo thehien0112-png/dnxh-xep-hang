@@ -628,57 +628,139 @@ function SelfSummary({ rows, mode }) {
 
 // ───────────────────────────── Podium (alt layout) ─────────────────────────────
 
-function Podium({ rows, mode }) {
+function Podium({ rows, mode, headerExpanded, setHeaderExpanded, selectedCell, setSelectedCell }) {
   const [first, second, third] = rows;
+  const rest = rows.slice(3);
+  const me = rows.find(r => r.isMe);
+
+  function onCellClick(rowId, crit) {
+    if (selectedCell && selectedCell.rowId === rowId && selectedCell.criterion === crit) {
+      setSelectedCell(null);
+    } else {
+      setSelectedCell({ rowId, criterion: crit });
+    }
+  }
+
+  // If a top-3 person has an open detail, render it full-width below the podium row.
+  const top3 = [first, second, third].filter(Boolean);
+  const top3Open = top3.find(r => selectedCell && selectedCell.rowId === r.id);
+
   return (
-    <div className="podium-wrap">
-      <div className="podium">
-        <PodiumSpot r={second} place={2}/>
-        <PodiumSpot r={first} place={1}/>
-        <PodiumSpot r={third} place={3}/>
+    <>
+      <div className="podium-3">
+        <PodiumSpot
+          r={second} place={2}
+          onCellClick={onCellClick}
+          selectedCrit={selectedCell && selectedCell.rowId === (second && second.id) ? selectedCell.criterion : null}
+        />
+        <PodiumSpot
+          r={first} place={1}
+          onCellClick={onCellClick}
+          selectedCrit={selectedCell && selectedCell.rowId === (first && first.id) ? selectedCell.criterion : null}
+        />
+        <PodiumSpot
+          r={third} place={3}
+          onCellClick={onCellClick}
+          selectedCrit={selectedCell && selectedCell.rowId === (third && third.id) ? selectedCell.criterion : null}
+        />
       </div>
-      <div className="podium-list card">
-        <div className="podium-list-h">Vị trí 4 – {rows.length}</div>
-        {rows.slice(3).map(r => (
-          <div key={r.id} className={'podium-row' + (r.isMe ? ' podium-row--me' : '')}>
-            <div className="podium-row-rank">#{r.rank}</div>
-            <div className={'avatar avatar--' + (r.id.charCodeAt(2) % 5)}>{initials(r.name)}</div>
-            <div className="podium-row-name">
-              <div>{r.name}{r.isMe && <span className="me-chip">Bạn</span>}</div>
-              <div className="podium-row-region">{r.region}</div>
-            </div>
-            <div className="podium-row-bars">
-              {CRITERIA.map(c => (
-                <div key={c.key} className="podium-bar" title={c.label + ': ' + formatPts(r.pts[c.key]) + ' đ'}>
-                  <div className="podium-bar-fill" style={{ height: Math.min(100, r.pts[c.key] / r.pts.total * 240) + '%' }}/>
-                </div>
-              ))}
-            </div>
-            <div className="podium-row-total">{formatPts(r.pts.total)}<span className="unit">đ</span></div>
+
+      {top3Open && (
+        <PersonDetail
+          person={top3Open}
+          criterion={selectedCell.criterion}
+          onClose={() => setSelectedCell(null)}
+        />
+      )}
+
+      <div className="board card">
+        <div className="board-head">
+          <div className="board-title">
+            <span className="board-h">Vị trí 4 – {rows.length}</span>
+            <span className="board-sub">{rest.length} {mode === 'ambassador' ? 'đại sứ' : 'nhà cung cấp'}</span>
           </div>
-        ))}
+          <div className="board-hint">
+            <Icon name="sparkle" size={13}/>
+            Bấm <strong>header cột</strong> để so sánh · bấm <strong>ô điểm</strong> để xem chi tiết
+          </div>
+        </div>
+
+        <div className="board-table">
+          <div className="row row-head">
+            <div className="c-rank">#</div>
+            <div className="c-name">Tên</div>
+            {CRITERIA.map(c => (
+              <button
+                key={c.key}
+                className={'c-crit head-btn' + (headerExpanded === c.key ? ' head-btn--active' : '')}
+                onClick={() => setHeaderExpanded(headerExpanded === c.key ? null : c.key)}
+                title={c.hint}
+              >
+                <span className="head-emoji">{c.emoji}</span>
+                <span className="head-label">{c.label}</span>
+                <span className="head-chev">{headerExpanded === c.key ? '▲' : '▾'}</span>
+              </button>
+            ))}
+            <div className="c-total">Tổng</div>
+          </div>
+
+          {rest.map(r => (
+            <RowGroup
+              key={r.id} r={r} mode={mode}
+              highlightKey={headerExpanded}
+              selectedCrit={selectedCell && selectedCell.rowId === r.id ? selectedCell.criterion : null}
+              onCellClick={(crit) => onCellClick(r.id, crit)}
+              onClose={() => setSelectedCell(null)}
+            />
+          ))}
+        </div>
+
+        {me && me.rank > 3 && !(selectedCell && selectedCell.rowId === me.id) && (
+          <div className="me-pin">
+            <div className="me-pin-label">Vị trí của bạn</div>
+            <Row r={me} mode={mode} highlightKey={headerExpanded}
+              selectedCrit={null}
+              onCellClick={(crit) => onCellClick(me.id, crit)}
+              isPin/>
+          </div>
+        )}
+
+        {headerExpanded && <DetailPanel rows={rows} criterion={headerExpanded} mode={mode}/>}
       </div>
-    </div>
+    </>
   );
 }
 
-function PodiumSpot({ r, place }) {
-  if (!r) return <div className="podium-spot"/>;
-  const heights = { 1: 200, 2: 150, 3: 120 };
+function PodiumSpot({ r, place, onCellClick, selectedCrit }) {
+  if (!r) return <div className="podium-spot podium-spot--empty"/>;
   const medals = { 1: 'gold', 2: 'silver', 3: 'bronze' };
   return (
-    <div className={'podium-spot podium-spot--p' + place}>
-      <div className={'podium-medal medal medal--' + medals[place]}>{place}</div>
-      <div className={'avatar avatar--lg avatar--' + (r.id.charCodeAt(2) % 5)}>{initials(r.name)}</div>
-      <div className="podium-name">{r.name}{r.isMe && <span className="me-chip">Bạn</span>}</div>
+    <div className={'podium-spot podium-spot--p' + place + (r.isMe ? ' podium-spot--me' : '')}>
+      <div className="podium-spot-top">
+        <div className={'podium-medal medal medal--' + medals[place]}>{place}</div>
+        <div className={'avatar avatar--lg avatar--' + (r.id.charCodeAt(2) % 5)}>{initials(r.name)}</div>
+      </div>
+      <div className="podium-name">
+        {r.name}
+        {r.isMe && <span className="me-chip">Bạn</span>}
+      </div>
       <div className="podium-region">{r.region}</div>
-      <div className="podium-pts">{formatPts(r.pts.total)}<span className="unit">đ</span></div>
-      <div className="podium-bar-block" style={{ height: heights[place] + 'px' }}>
+      <div className="podium-pts">
+        {formatPts(r.pts.total)}<span className="unit">đ</span>
+      </div>
+      <div className="podium-crits">
         {CRITERIA.map(c => (
-          <div key={c.key} className="podium-block-row">
-            <span className="podium-block-ico">{c.emoji}</span>
-            <span className="podium-block-val">{formatPts(r.pts[c.key])}</span>
-          </div>
+          <button
+            key={c.key}
+            type="button"
+            className={'podium-crit' + (selectedCrit === c.key ? ' podium-crit--selected' : '')}
+            onClick={() => onCellClick(r.id, c.key)}
+            title={c.label + ' — bấm để xem chi tiết'}
+          >
+            <span className="podium-crit-ico">{c.emoji}</span>
+            <span className="podium-crit-val">{formatPts(r.pts[c.key])}<span className="unit">đ</span></span>
+            <span className="podium-crit-lab">{c.short}</span>
+          </button>
         ))}
       </div>
     </div>
@@ -723,7 +805,11 @@ function App() {
                 headerExpanded={headerExpanded} setHeaderExpanded={setHeaderExpanded}
                 selectedCell={selectedCell} setSelectedCell={setSelectedCell}
               />
-            : <Podium rows={rows} mode={mode}/>}
+            : <Podium
+                rows={rows} mode={mode}
+                headerExpanded={headerExpanded} setHeaderExpanded={setHeaderExpanded}
+                selectedCell={selectedCell} setSelectedCell={setSelectedCell}
+              />}
         </div>
       </main>
 

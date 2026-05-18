@@ -127,7 +127,6 @@ function Sidebar({ ctx }) {
 // ───────────────────────────── Top bar ─────────────────────────────
 
 function TopBar({ ctx, period, setPeriod }) {
-  const isNcc = ctx === 'ncc';
   return (
     <div className="topbar">
       <div className="topbar-left">
@@ -135,15 +134,8 @@ function TopBar({ ctx, period, setPeriod }) {
         <span className="topbar-sub">{PERIOD_LABEL[period]} · {PERIOD_RANGE[period]}</span>
       </div>
       <div className="topbar-right">
-        {!isNcc && (
-          <div className="code-chip">
-            <span>Mã gieo duyên/Mã giảm giá: <strong>AB4CD9FG</strong></span>
-            <Icon name="copy" size={14}/>
-          </div>
-        )}
         <PeriodSelect value={period} onChange={setPeriod}/>
         <button className="btn btn-primary"><Icon name="download" size={14}/> Xuất báo cáo</button>
-        {!isNcc && <button className="btn btn-primary-outline">Rút tiền</button>}
       </div>
     </div>
   );
@@ -747,7 +739,7 @@ function Stars({ value }) {
 
 // ───────────────────────────── Self summary card ─────────────────────────────
 
-function SelfSummary({ rows, mode }) {
+function SelfSummary({ rows, mode, selectedCell, setSelectedCell }) {
   const me = rows.find(r => r.isMe);
   if (!me) return null;
   const ahead = rows.find(r => r.rank === me.rank - 1);
@@ -756,59 +748,85 @@ function SelfSummary({ rows, mode }) {
   const nextTier = getNextTier(me.pts.total);
   const delta = me.delta || 0;
 
+  function onMiniClick(crit) {
+    if (selectedCell && selectedCell.rowId === me.id && selectedCell.criterion === crit) {
+      setSelectedCell(null);
+    } else {
+      setSelectedCell({ rowId: me.id, criterion: crit });
+    }
+  }
+  const openCrit = selectedCell && selectedCell.rowId === me.id ? selectedCell.criterion : null;
+
   return (
-    <div className="self-card card">
-      <div className="self-left">
-        <div className="self-rank-chip">
-          <div className="self-rank-num">#{me.rank}</div>
-          <div className="self-rank-of">/ {rows.length}</div>
-        </div>
-        <div>
-          <div className="self-label">Vị trí của bạn ở bảng {mode === 'ambassador' ? 'Đại sứ' : 'NCC'}</div>
-          <div className="self-name">{me.name}</div>
-          <div className="self-meta">
-            {tier && <TierBadge tier={tier} size="sm"/>}
-            <DeltaIndicator delta={delta}/>
-            <span className="self-meta-txt">
-              {delta > 0 ? 'Lên ' + delta + ' bậc so với kỳ trước'
-                : delta < 0 ? 'Tụt ' + Math.abs(delta) + ' bậc so với kỳ trước'
-                : 'Giữ nguyên vị trí'}
-            </span>
+    <>
+      <div className="self-card card">
+        <div className="self-left">
+          <div className="self-rank-chip">
+            <div className="self-rank-num">#{me.rank}</div>
+            <div className="self-rank-of">/ {rows.length}</div>
           </div>
-        </div>
-      </div>
-      <div className="self-mid">
-        <div className="self-stat">
-          <div className="self-stat-num">{formatPts(me.pts.total)}<span className="unit">đ</span></div>
-          <div className="self-stat-lab">Tổng điểm</div>
-        </div>
-        {ahead && (
-          <div className="self-stat self-stat--gap">
-            <div className="self-stat-num">+{formatPts(gap)}<span className="unit">đ</span></div>
-            <div className="self-stat-lab">để vượt <strong>{ahead.name}</strong></div>
-          </div>
-        )}
-        {nextTier && (
-          <div className="self-tier-progress">
-            <div className="self-tier-bar">
-              <div className="self-tier-fill" style={{ width: (nextTier.progress * 100) + '%' }}/>
-            </div>
-            <div className="self-tier-meta">
-              Còn <strong>{formatPts(nextTier.need)}đ</strong> nữa lên <span className="self-tier-name" style={{ color: nextTier.next.color }}>{nextTier.next.emoji} {nextTier.next.label}</span>
+          <div>
+            <div className="self-label">Vị trí của bạn ở bảng {mode === 'ambassador' ? 'Đại sứ' : 'NCC'}</div>
+            <div className="self-name">{me.name}</div>
+            <div className="self-meta">
+              {tier && <TierBadge tier={tier} size="sm"/>}
+              <DeltaIndicator delta={delta}/>
+              <span className="self-meta-txt">
+                {delta > 0 ? 'Lên ' + delta + ' bậc so với kỳ trước'
+                  : delta < 0 ? 'Tụt ' + Math.abs(delta) + ' bậc so với kỳ trước'
+                  : 'Giữ nguyên vị trí'}
+              </span>
             </div>
           </div>
-        )}
-      </div>
-      <div className="self-right">
-        {CRITERIA.map(c => (
-          <div key={c.key} className="self-mini">
-            <div className="self-mini-ico">{c.emoji}</div>
-            <div className="self-mini-num">{formatPts(me.pts[c.key])}</div>
-            <div className="self-mini-lab">{c.short}</div>
+        </div>
+        <div className="self-mid">
+          <div className="self-stat">
+            <div className="self-stat-num">{formatPts(me.pts.total)}<span className="unit">đ</span></div>
+            <div className="self-stat-lab">Tổng điểm</div>
           </div>
-        ))}
+          {ahead && (
+            <div className="self-stat self-stat--gap">
+              <div className="self-stat-num">+{formatPts(gap)}<span className="unit">đ</span></div>
+              <div className="self-stat-lab">để vượt <strong>{ahead.name}</strong></div>
+            </div>
+          )}
+          {nextTier && (
+            <div className="self-tier-progress">
+              <div className="self-tier-bar">
+                <div className="self-tier-fill" style={{ width: (nextTier.progress * 100) + '%' }}/>
+              </div>
+              <div className="self-tier-meta">
+                Còn <strong>{formatPts(nextTier.need)}đ</strong> nữa lên <span className="self-tier-name" style={{ color: nextTier.next.color }}>{nextTier.next.emoji} {nextTier.next.label}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="self-right">
+          {CRITERIA.map(c => (
+            <button
+              key={c.key}
+              type="button"
+              className={'self-mini self-mini-btn' + (openCrit === c.key ? ' self-mini-btn--active' : '')}
+              onClick={() => onMiniClick(c.key)}
+              title={`Xem chi tiết ${c.label}`}
+            >
+              <div className="self-mini-ico">{c.emoji}</div>
+              <div className="self-mini-num">{formatPts(me.pts[c.key])}</div>
+              <div className="self-mini-lab">{c.short}</div>
+              <div className="self-mini-chev">{openCrit === c.key ? '▴' : '▾'}</div>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+
+      {openCrit && (
+        <PersonDetail
+          person={me}
+          criterion={openCrit}
+          onClose={() => setSelectedCell(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -1062,7 +1080,8 @@ function App() {
       <main className="main">
         <TopBar ctx={t.sidebar_ctx} period={period} setPeriod={setPeriod}/>
         <div className="content">
-          <SelfSummary rows={rows} mode={mode}/>
+          <SelfSummary rows={rows} mode={mode}
+            selectedCell={selectedCell} setSelectedCell={setSelectedCell}/>
           <Toolbar
             searchQ={searchQ} setSearchQ={setSearchQ}
             filterRegion={filterRegion} setFilterRegion={setFilterRegion}

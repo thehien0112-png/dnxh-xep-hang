@@ -459,6 +459,34 @@ body {
   background: var(--surface-2);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-soft);
+  position: relative;
+}
+.self-mini-btn {
+  font: inherit;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.self-mini-btn:hover {
+  background: white;
+  border-color: var(--primary-soft);
+  transform: translateY(-1px);
+}
+.self-mini-btn--active {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.self-mini-btn--active .self-mini-num,
+.self-mini-btn--active .self-mini-lab,
+.self-mini-btn--active .self-mini-chev { color: white; }
+.self-mini-chev {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 9px;
+  color: var(--text-subtle);
+  line-height: 1;
 }
 .self-mini-ico { font-size: 16px; line-height: 1; }
 .self-mini-num {

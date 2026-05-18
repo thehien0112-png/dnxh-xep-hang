@@ -5,11 +5,11 @@ window.formatVND = (n) => n.toLocaleString('vi-VN');
 window.formatPts = (n) => Math.round(n).toLocaleString('vi-VN');
 
 window.CRITERIA = [
-  { key: 'rev',    label: 'Doanh thu',       short: 'DT',     emoji: '💰', hint: '100.000đ trực tiếp = 1đ · 100.000đ gián tiếp = 0.5đ' },
-  { key: 'zoom',   label: 'Check-in Zoom',   short: 'Zoom',   emoji: '🎥', hint: 'Tự check-in = 20đ · Mời người khác = 10đ' },
-  { key: 'f1',     label: 'Số lượng F1',     short: 'F1',     emoji: '👥', hint: 'Mời người trở thành F1 = 20đ/người' },
-  { key: 'study',  label: 'Học tập',         short: 'Học',    emoji: '📘', hint: 'Điểm thô lấy từ App học tập' },
-  { key: 'rating', label: 'Đánh giá',        short: 'Sao',    emoji: '⭐', hint: '1 sao = 100đ · 5 sao = 500đ (trung bình cấp trên/cấp dưới)' },
+  { key: 'rev',    label: 'Doanh thu',       short: 'DT',     emoji: '💰', color: '#0d6b5e', hint: '100.000đ trực tiếp = 1đ · 100.000đ gián tiếp = 0.5đ' },
+  { key: 'zoom',   label: 'Check-in Zoom',   short: 'Zoom',   emoji: '🎥', color: '#c98f1f', hint: 'Tự check-in = 20đ · Mời người khác = 10đ' },
+  { key: 'f1',     label: 'Số lượng F1',     short: 'F1',     emoji: '👥', color: '#6d7be0', hint: 'Mời người trở thành F1 = 20đ/người' },
+  { key: 'study',  label: 'Học tập',         short: 'Học',    emoji: '📘', color: '#b3743a', hint: 'Điểm thô lấy từ App học tập' },
+  { key: 'rating', label: 'Đánh giá',        short: 'Sao',    emoji: '⭐', color: '#c95f3d', hint: '1 sao = 100đ · 5 sao = 500đ (trung bình cấp trên/cấp dưới)' },
 ];
 
 // Each row: directRev / indirectRev in VND; zoomSelf / zoomInvite counts;
@@ -345,4 +345,77 @@ window.scaleRow = function scaleRow(p, factor) {
     study: Math.round(p.study * factor),
     // ratingAvg stays the same regardless of period
   };
+};
+
+// ───────────────────────── Tiers, badges, deltas, percentile ─────────────────────────
+
+window.TIERS = [
+  { key: 'platinum', label: 'Bạch kim', min: 2200, color: '#6d7be0', soft: '#e9ecfa', emoji: '💠' },
+  { key: 'gold',     label: 'Vàng',    min: 1500, color: '#c98f1f', soft: '#fbf2d9', emoji: '🥇' },
+  { key: 'silver',   label: 'Bạc',     min: 800,  color: '#7c8595', soft: '#eef0f3', emoji: '🥈' },
+  { key: 'bronze',   label: 'Đồng',    min: 0,    color: '#b3743a', soft: '#f5e5d4', emoji: '🥉' },
+];
+
+window.getTier = function (points) {
+  for (const t of TIERS) if (points >= t.min) return t;
+  return TIERS[TIERS.length - 1];
+};
+
+window.getNextTier = function (points) {
+  // Iterate from lowest tier upward; return the first tier above current points.
+  for (let i = TIERS.length - 1; i >= 0; i--) {
+    if (points < TIERS[i].min) {
+      const next = TIERS[i];
+      const cur = i + 1 < TIERS.length ? TIERS[i + 1] : null;
+      const base = cur ? cur.min : 0;
+      const progress = (points - base) / (next.min - base);
+      return { next, current: cur, need: next.min - points, progress: Math.max(0, Math.min(1, progress)) };
+    }
+  }
+  return null; // already at top tier
+};
+
+window.getDelta = function (person, currentRank, total) {
+  // Deterministic ±3 variance based on id hash → mock previous-period rank.
+  const v = (hashId(person.id) % 7) - 3; // -3..+3
+  const prev = Math.max(1, Math.min(total, currentRank + v));
+  return prev - currentRank; // positive = moved up
+};
+
+window.getBadges = function (person, rows) {
+  const badges = [];
+
+  if (person.rank === 1) badges.push({ emoji: '🏆', label: 'Top 1', cls: 'gold' });
+
+  // Best on each criterion (only mark if person actually leads)
+  for (const c of CRITERIA) {
+    let topVal = -1, topId = null;
+    for (const r of rows) {
+      if (r.pts[c.key] > topVal) { topVal = r.pts[c.key]; topId = r.id; }
+    }
+    if (topId === person.id && topVal > 0 && person.rank > 1) {
+      badges.push({ emoji: c.emoji, label: 'Số 1 ' + c.label, cls: 'crit' });
+    }
+  }
+
+  // Streak (deterministic mock)
+  const streak = (hashId(person.id) >> 3) % 6;
+  if (streak >= 3 && person.rank <= 6) {
+    badges.push({ emoji: '🔥', label: streak + ' tuần liền top 6', cls: 'streak' });
+  }
+
+  // New member (mock for lower ranks)
+  if (person.rank >= 13 && (hashId(person.id) % 4 === 0)) {
+    badges.push({ emoji: '🌱', label: 'Mới gia nhập', cls: 'new' });
+  }
+
+  return badges.slice(0, 2);
+};
+
+window.getPercentile = function (rows, critKey, value) {
+  if (!rows.length) return 0;
+  const sorted = rows.map(r => r.pts[critKey]).sort((a, b) => a - b);
+  const max = sorted[sorted.length - 1];
+  if (max <= 0) return 0;
+  return value / max; // 0..1, normalized to max
 };

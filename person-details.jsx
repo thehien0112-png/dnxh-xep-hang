@@ -332,8 +332,21 @@ function PersonRating({ person }) {
 
 window.PersonDetail = function PersonDetail({ person, criterion, onClose }) {
   const c = CRITERIA.find(x => x.key === criterion);
+  function onPrint() {
+    document.body.classList.add('printing-pd');
+    document.body.setAttribute('data-print-person', person.name);
+    document.body.setAttribute('data-print-crit', c.label);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('printing-pd');
+        document.body.removeAttribute('data-print-person');
+        document.body.removeAttribute('data-print-crit');
+      }, 200);
+    }, 50);
+  }
   return (
-    <div className="pd" onClick={(e) => e.stopPropagation()}>
+    <div className="pd" data-pd-active="true" onClick={(e) => e.stopPropagation()}>
       <div className="pd-head">
         <div className="pd-title">
           <span className="pd-emoji">{c.emoji}</span>
@@ -342,7 +355,15 @@ window.PersonDetail = function PersonDetail({ person, criterion, onClose }) {
             <div className="pd-sub">của <strong>{person.name}</strong>{person.region ? ' · ' + person.region : ''}</div>
           </div>
         </div>
-        <button className="pd-close" onClick={onClose} title="Đóng">✕</button>
+        <div className="pd-actions">
+          <button className="pd-print" onClick={onPrint} title="In / xuất PDF báo cáo">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/>
+            </svg>
+            In PDF
+          </button>
+          <button className="pd-close" onClick={onClose} title="Đóng">✕</button>
+        </div>
       </div>
       {criterion === 'rev' && <PersonOrders person={person}/>}
       {criterion === 'zoom' && <PersonZoom person={person}/>}

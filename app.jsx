@@ -6,10 +6,8 @@
 
 const { useState, useMemo, useEffect, useRef } = React;
 const PersonDetail = window.PersonDetail;
-const CompareDrawer = window.CompareDrawer;
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "layout": "table",
   "sidebar_ctx": "ambassador"
 }/*EDITMODE-END*/;
 
@@ -22,7 +20,7 @@ const AMB_NAV = [
   { key: 'f1',       label: 'Danh sách F1',       icon: 'users' },
   { key: 'danhgia',  label: 'Đánh giá',           icon: 'star' },
   { key: 'tracuu',   label: 'Tra cứu khách hàng', icon: 'search-user' },
-  { key: 'xephang',  label: 'Xếp hạng',           icon: 'trophy', isNew: true },
+  { key: 'xephang',  label: 'Xếp hạng',           icon: 'trophy' },
   { key: 'taikhoan', label: 'Tài khoản',          icon: 'user' },
 ];
 
@@ -33,7 +31,7 @@ const NCC_NAV = [
   { key: 'tra',      label: 'Yêu cầu trả hàng', icon: 'return' },
   { key: 'caidat',   label: 'Cài đặt',          icon: 'gear', expandable: true },
   { key: 'kho',      label: 'Kho hàng',         icon: 'warehouse' },
-  { key: 'xephang',  label: 'Xếp hạng',         icon: 'trophy', isNew: true },
+  { key: 'xephang',  label: 'Xếp hạng',         icon: 'trophy' },
 ];
 
 function Icon({ name, size = 18 }) {
@@ -55,11 +53,8 @@ function Icon({ name, size = 18 }) {
     case 'check':       return <svg viewBox="0 0 24 24" {...s}><path d="M5 12l5 5L20 7"/></svg>;
     case 'chevron-down': return <svg viewBox="0 0 24 24" {...s}><path d="M6 9l6 6 6-6"/></svg>;
     case 'chevron-up':   return <svg viewBox="0 0 24 24" {...s}><path d="M6 15l6-6 6 6"/></svg>;
-    case 'copy':        return <svg viewBox="0 0 24 24" {...s}><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>;
     case 'download':    return <svg viewBox="0 0 24 24" {...s}><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>;
     case 'search':      return <svg viewBox="0 0 24 24" {...s}><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.3-4.3"/></svg>;
-    case 'cart-bag':    return <svg viewBox="0 0 24 24" {...s}><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.5 11h11l2-8H6"/></svg>;
-    case 'sparkle':     return <svg viewBox="0 0 24 24" {...s}><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.6 5.6l4.2 4.2M14.2 14.2l4.2 4.2M5.6 18.4l4.2-4.2M14.2 9.8l4.2-4.2"/></svg>;
     default: return null;
   }
 }
@@ -126,7 +121,7 @@ function Sidebar({ ctx }) {
 
 // ───────────────────────────── Top bar ─────────────────────────────
 
-function TopBar({ ctx, period, setPeriod }) {
+function TopBar({ period, setPeriod }) {
   return (
     <div className="topbar">
       <div className="topbar-left">
@@ -179,212 +174,81 @@ function PeriodSelect({ value, onChange }) {
   );
 }
 
-// ───────────────────────────── Mode tabs + scoring legend ─────────────────────────────
+// ───────────────────────────── Self summary ─────────────────────────────
 
-function ModeTabs({ mode, setMode }) {
-  return (
-    <div className="mode-tabs">
-      <button
-        className={'mode-tab' + (mode === 'ambassador' ? ' mode-tab--active' : '')}
-        onClick={() => setMode('ambassador')}
-      >
-        <span className="mode-tab-ico">🤝</span>
-        <span className="mode-tab-text">
-          <span className="mode-tab-title">Đại sứ <span className="vs">vs</span> Đại sứ</span>
-          <span className="mode-tab-sub">Bảng xếp hạng nội bộ đại sứ</span>
-        </span>
-      </button>
-      <button
-        className={'mode-tab' + (mode === 'supplier' ? ' mode-tab--active' : '')}
-        onClick={() => setMode('supplier')}
-      >
-        <span className="mode-tab-ico">🏪</span>
-        <span className="mode-tab-text">
-          <span className="mode-tab-title">NCC <span className="vs">vs</span> NCC</span>
-          <span className="mode-tab-sub">Bảng xếp hạng nhà cung cấp</span>
-        </span>
-      </button>
-    </div>
-  );
-}
+function SelfSummary({ rows, mode, selectedCell, setSelectedCell }) {
+  const me = rows.find(r => r.isMe);
+  if (!me) return null;
+  const ahead = rows.find(r => r.rank === me.rank - 1);
+  const gap = ahead ? Math.round(ahead.pts.total - me.pts.total) : 0;
 
-function ScoringLegend() {
-  const [open, setOpen] = useState(false);
+  function onMiniClick(crit) {
+    if (selectedCell && selectedCell.rowId === me.id && selectedCell.criterion === crit) {
+      setSelectedCell(null);
+    } else {
+      setSelectedCell({ rowId: me.id, criterion: crit });
+    }
+  }
+  const openCrit = selectedCell && selectedCell.rowId === me.id ? selectedCell.criterion : null;
+
   return (
-    <div className={'legend' + (open ? ' legend--open' : '')}>
-      <button className="legend-head" onClick={() => setOpen(o => !o)}>
-        <span className="legend-title">
-          <Icon name="sparkle" size={14}/>
-          Công thức tính điểm
-        </span>
-        <span className="legend-toggle">
-          {open ? 'Thu gọn' : 'Xem chi tiết'}
-          <Icon name={open ? 'chevron-up' : 'chevron-down'} size={14}/>
-        </span>
-      </button>
-      {open && (
-        <div className="legend-body">
-          <div className="legend-card">
-            <div className="legend-ix">1</div>
-            <div className="legend-name">💰 Doanh thu</div>
-            <div className="legend-rule">100.000đ <em>trực tiếp</em> = 1đ</div>
-            <div className="legend-rule">100.000đ <em>gián tiếp</em> = 0.5đ</div>
+    <>
+      <div className="self-card card">
+        <div className="self-left">
+          <div className="self-rank-chip">
+            <div className="self-rank-num">#{me.rank}</div>
+            <div className="self-rank-of">/ {rows.length}</div>
           </div>
-          <div className="legend-card">
-            <div className="legend-ix">2</div>
-            <div className="legend-name">🎥 Check-in Zoom</div>
-            <div className="legend-rule">Tự check-in = 20đ</div>
-            <div className="legend-rule">Mời người khác = 10đ</div>
-          </div>
-          <div className="legend-card">
-            <div className="legend-ix">3</div>
-            <div className="legend-name">👥 Số lượng F1</div>
-            <div className="legend-rule">Mời F1 mới = 20đ / người</div>
-          </div>
-          <div className="legend-card">
-            <div className="legend-ix">4</div>
-            <div className="legend-name">📘 Học tập</div>
-            <div className="legend-rule">Điểm thô lấy từ App</div>
-          </div>
-          <div className="legend-card">
-            <div className="legend-ix">5</div>
-            <div className="legend-name">⭐ Đánh giá cấp trên/dưới</div>
-            <div className="legend-rule">1 sao = 100đ … 5 sao = 500đ</div>
+          <div>
+            <div className="self-label">Vị trí của bạn ở bảng {mode === 'ambassador' ? 'Đại sứ' : 'NCC'}</div>
+            <div className="self-name">{me.name}</div>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
+        <div className="self-mid">
+          <div className="self-stat">
+            <div className="self-stat-num">{formatPts(me.pts.total)}<span className="unit">đ</span></div>
+            <div className="self-stat-lab">Tổng điểm</div>
+          </div>
+          {ahead && (
+            <div className="self-stat self-stat--gap">
+              <div className="self-stat-num">+{formatPts(gap)}<span className="unit">đ</span></div>
+              <div className="self-stat-lab">để vượt <strong>{ahead.name}</strong></div>
+            </div>
+          )}
+        </div>
+        <div className="self-right">
+          {CRITERIA.map(c => (
+            <button
+              key={c.key}
+              type="button"
+              className={'self-mini self-mini-btn' + (openCrit === c.key ? ' self-mini-btn--active' : '')}
+              onClick={() => onMiniClick(c.key)}
+              title={`Xem chi tiết ${c.label}`}
+            >
+              <div className="self-mini-ico">{c.emoji}</div>
+              <div className="self-mini-num">{formatPts(me.pts[c.key])}</div>
+              <div className="self-mini-lab">{c.short}</div>
+              <div className="self-mini-chev">{openCrit === c.key ? '▴' : '▾'}</div>
+            </button>
+          ))}
+        </div>
+      </div>
 
-// ───────────────────────────── Toolbar (search, filter, compare bar) ─────────────────────────────
-
-function Toolbar({ searchQ, setSearchQ, totalCount, filteredCount }) {
-  const isFiltering = !!searchQ;
-  return (
-    <div className="toolbar card">
-      <div className="toolbar-search">
-        <Icon name="search" size={16}/>
-        <input
-          type="text"
-          placeholder="Tìm theo tên…"
-          value={searchQ}
-          onChange={(e) => setSearchQ(e.target.value)}
+      {openCrit && (
+        <PersonDetail
+          person={me}
+          criterion={openCrit}
+          onClose={() => setSelectedCell(null)}
         />
-        {searchQ && (
-          <button className="toolbar-search-x" onClick={() => setSearchQ('')} title="Xoá tìm kiếm">✕</button>
-        )}
-      </div>
-
-      <div className="toolbar-count">
-        {isFiltering ? (
-          <span>Hiển thị <strong>{filteredCount}</strong> / {totalCount}</span>
-        ) : (
-          <span>Tổng <strong>{totalCount}</strong></span>
-        )}
-        {isFiltering && (
-          <button className="toolbar-clear" onClick={() => setSearchQ('')}>
-            Bỏ lọc
-          </button>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
-function EmptyState({ onClear }) {
-  return (
-    <div className="empty-state card">
-      <div className="empty-emoji">📭</div>
-      <div className="empty-h">Không tìm thấy ai phù hợp</div>
-      <div className="empty-sub">Thử thay đổi từ khoá tìm kiếm.</div>
-      <button className="btn btn-primary-outline" onClick={onClear}>Bỏ tất cả bộ lọc</button>
-    </div>
-  );
-}
+// ───────────────────────────── Leaderboard ─────────────────────────────
 
-function CompareBar({ count, onClear, onOpen }) {
-  const canCompare = count >= 2;
-  return (
-    <div className="cmp-bar">
-      <div className="cmp-bar-text">
-        <span className="cmp-bar-count">{count}</span>
-        <span>{count === 1 ? 'người được chọn' : 'người được chọn'} để so sánh</span>
-        {!canCompare && <span className="cmp-bar-hint">· Chọn ≥ 2 người để mở so sánh</span>}
-      </div>
-      <div className="cmp-bar-actions">
-        <button className="cmp-bar-clear" onClick={onClear}>Bỏ chọn</button>
-        <button className="cmp-bar-open" onClick={onOpen} disabled={!canCompare}>
-          So sánh {count} người
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DeltaIndicator({ delta }) {
-  if (delta === 0) return <span className="delta delta--same" title="Giữ nguyên vị trí">→</span>;
-  if (delta > 0) return <span className="delta delta--up" title={`Lên ${delta} bậc so với kỳ trước`}>↑{delta}</span>;
-  return <span className="delta delta--down" title={`Tụt ${Math.abs(delta)} bậc so với kỳ trước`}>↓{Math.abs(delta)}</span>;
-}
-
-function CompareCheckbox({ checked, onChange, disabled }) {
-  return (
-    <button
-      type="button"
-      className={'cmp-cb' + (checked ? ' cmp-cb--on' : '') + (disabled ? ' cmp-cb--disabled' : '')}
-      onClick={(e) => { e.stopPropagation(); onChange(); }}
-      title={disabled ? 'Đã chọn tối đa 4 người' : (checked ? 'Bỏ chọn so sánh' : 'Thêm vào so sánh')}
-      aria-checked={checked}
-      role="checkbox"
-    >
-      {checked && <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l3.5 3.5L13 5"/></svg>}
-    </button>
-  );
-}
-
-function TierBadge({ tier, size = 'sm' }) {
-  return (
-    <span className={'tier-badge tier-badge--' + size} style={{ '--tc': tier.color, '--tb': tier.soft }}>
-      <span className="tier-badge-em">{tier.emoji}</span>
-      <span className="tier-badge-lab">{tier.label}</span>
-    </span>
-  );
-}
-
-function BadgeChips({ badges }) {
-  if (!badges || badges.length === 0) return null;
-  return (
-    <div className="badges">
-      {badges.map((b, i) => (
-        <span key={i} className={'badge badge--' + b.cls} title={b.label}>
-          <span className="badge-em">{b.emoji}</span>
-          <span className="badge-lab">{b.label}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function CompLegend() {
-  return (
-    <div className="comp-legend" title="Mỗi ô được tô màu theo % đóng góp vào tổng điểm — từ mạnh nhất (xanh) đến yếu nhất (đỏ).">
-      <span className="comp-legend-label">Trong dòng:</span>
-      <span className="comp-legend-item"><span className="comp-legend-dot dot-rank-1"/><span>Mạnh nhất</span></span>
-      <span className="comp-legend-item"><span className="comp-legend-dot dot-rank-2"/></span>
-      <span className="comp-legend-item"><span className="comp-legend-dot dot-rank-3"/></span>
-      <span className="comp-legend-item"><span className="comp-legend-dot dot-rank-4"/></span>
-      <span className="comp-legend-item"><span className="comp-legend-dot dot-rank-5"/><span>Yếu nhất</span></span>
-    </div>
-  );
-}
-
-// ───────────────────────────── Leaderboard (table) ─────────────────────────────
-
-function Leaderboard({ rows, allRows, mode, headerExpanded, setHeaderExpanded, selectedCell, setSelectedCell,
-  compareSelected, onToggleCompare }) {
+function Leaderboard({ rows, mode, headerExpanded, setHeaderExpanded, selectedCell, setSelectedCell }) {
   const me = rows.find(r => r.isMe);
-  const compareFull = compareSelected && compareSelected.length >= 4;
 
   function onCellClick(rowId, crit) {
     if (selectedCell && selectedCell.rowId === rowId && selectedCell.criterion === crit) {
@@ -401,12 +265,10 @@ function Leaderboard({ rows, allRows, mode, headerExpanded, setHeaderExpanded, s
           <span className="board-h">Bảng xếp hạng — {mode === 'ambassador' ? 'Đại sứ' : 'NCC'}</span>
           <span className="board-sub">{rows.length} {mode === 'ambassador' ? 'đại sứ' : 'nhà cung cấp'}</span>
         </div>
-        <CompLegend/>
       </div>
 
       <div className="board-table">
         <div className="row row-head">
-          <div className="c-check"/>
           <div className="c-rank">#</div>
           <div className="c-name">Tên</div>
           {CRITERIA.map(c => (
@@ -431,39 +293,20 @@ function Leaderboard({ rows, allRows, mode, headerExpanded, setHeaderExpanded, s
             selectedCrit={selectedCell && selectedCell.rowId === r.id ? selectedCell.criterion : null}
             onCellClick={(crit) => onCellClick(r.id, crit)}
             onClose={() => setSelectedCell(null)}
-            compareSelected={compareSelected}
-            onToggleCompare={onToggleCompare}
-            compareFull={compareFull}
           />
         ))}
       </div>
 
-      {me && !(selectedCell && selectedCell.rowId === me.id) && (
-        <div className="me-pin">
-          <div className="me-pin-label">Vị trí của bạn</div>
-          <Row r={me} mode={mode} highlightKey={headerExpanded}
-            selectedCrit={null}
-            onCellClick={(crit) => onCellClick(me.id, crit)}
-            compareSelected={compareSelected}
-            onToggleCompare={onToggleCompare}
-            compareFull={compareFull}
-            isPin/>
-        </div>
-      )}
-
-      {headerExpanded && <DetailPanel rows={allRows || rows} criterion={headerExpanded} mode={mode}/>}
+      {headerExpanded && <DetailPanel rows={rows} criterion={headerExpanded} mode={mode}/>}
     </div>
   );
 }
 
-function RowGroup({ r, mode, highlightKey, selectedCrit, onCellClick, onClose,
-  compareSelected, onToggleCompare, compareFull }) {
+function RowGroup({ r, mode, highlightKey, selectedCrit, onCellClick, onClose }) {
   return (
     <div className="row-wrap">
       <Row r={r} mode={mode} highlightKey={highlightKey}
-        selectedCrit={selectedCrit} onCellClick={onCellClick}
-        compareSelected={compareSelected} onToggleCompare={onToggleCompare}
-        compareFull={compareFull}/>
+        selectedCrit={selectedCrit} onCellClick={onCellClick}/>
       {selectedCrit && !r.isMe && (
         <PersonDetail person={r} criterion={selectedCrit} onClose={onClose}/>
       )}
@@ -471,33 +314,17 @@ function RowGroup({ r, mode, highlightKey, selectedCrit, onCellClick, onClose,
   );
 }
 
-function Row({ r, mode, highlightKey, selectedCrit, onCellClick, isPin,
-  compareSelected, onToggleCompare, compareFull }) {
+function Row({ r, mode, highlightKey, selectedCrit, onCellClick, isPin }) {
   const c = r.pts;
   const medal = r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : r.rank === 3 ? 'bronze' : null;
-  const isSelected = compareSelected && compareSelected.includes(r.id);
   return (
-    <div className={
-      'row'
-      + (r.isMe ? ' row--me' : '')
-      + (isPin ? ' row--pin' : '')
-      + (selectedCrit ? ' row--expanded' : '')
-      + (isSelected ? ' row--cmp' : '')
-    }>
-      <div className="c-check">
-        <CompareCheckbox
-          checked={isSelected}
-          disabled={!isSelected && compareFull}
-          onChange={() => onToggleCompare && onToggleCompare(r.id)}
-        />
-      </div>
+    <div className={'row' + (r.isMe ? ' row--me' : '') + (isPin ? ' row--pin' : '') + (selectedCrit ? ' row--expanded' : '')}>
       <div className="c-rank">
         {medal ? (
           <span className={'medal medal--' + medal}>{r.rank}</span>
         ) : (
           <span className="rank-num">{r.rank}</span>
         )}
-        <DeltaIndicator delta={r.delta || 0}/>
       </div>
       <div className="c-name">
         <div className={'avatar avatar--' + (r.id.charCodeAt(2) % 5)}>{initials(r.name)}</div>
@@ -506,43 +333,34 @@ function Row({ r, mode, highlightKey, selectedCrit, onCellClick, isPin,
             {r.name}
             {r.isMe && <span className="me-chip">Bạn</span>}
           </div>
-          <BadgeChips badges={r.badges}/>
         </div>
       </div>
       {CRITERIA.map(crit => (
         <CritCell key={crit.key}
           value={c[crit.key]}
-          pct={r.cellPct ? r.cellPct[crit.key] : 0}
-          rank={r.cellRank ? r.cellRank[crit.key] : 3}
           active={highlightKey === crit.key}
           selected={selectedCrit === crit.key}
           onClick={() => onCellClick(crit.key)}
         />
       ))}
-      <div className="c-total">
-        <div className="total-num">{formatPts(c.total)}<span className="unit">đ</span></div>
-        {r.tier && <TierBadge tier={r.tier} size="xs"/>}
-      </div>
+      <div className="c-total">{formatPts(c.total)}<span className="unit">đ</span></div>
     </div>
   );
 }
 
-function CritCell({ value, pct, rank, active, selected, onClick }) {
-  const p = Math.round(pct || 0);
+function CritCell({ value, active, selected, onClick }) {
   return (
     <button
       type="button"
       className={
         'c-crit cell-btn'
-        + ' cell-rank-' + (rank || 3)
         + (active ? ' c-crit--active' : '')
         + (selected ? ' c-crit--selected' : '')
       }
       onClick={onClick}
-      title={`Chiếm ${p}% tổng điểm · xếp hạng ${rank}/5 trong dòng · bấm để xem chi tiết`}
+      title="Bấm để xem chi tiết"
     >
       <span className="crit-val">{formatPts(value)}<span className="unit">đ</span></span>
-      <span className="crit-pct">{p}%</span>
     </button>
   );
 }
@@ -552,7 +370,7 @@ function initials(n) {
   return (parts[parts.length - 1][0] + (parts[0][0] || '')).toUpperCase();
 }
 
-// ───────────────────────────── Detail expand panels ─────────────────────────────
+// ───────────────────────────── Comparison detail panel (sort-by-criterion) ─────────────────────────────
 
 function DetailPanel({ rows, criterion, mode }) {
   const c = CRITERIA.find(x => x.key === criterion);
@@ -583,7 +401,7 @@ function DetailPanel({ rows, criterion, mode }) {
 }
 
 function DetailTable({ heads, rows }) {
-  const midCols = Math.max(1, heads.length - 3); // subtract rank, name, total
+  const midCols = Math.max(1, heads.length - 3);
   return (
     <div className="detail-table" style={{ '--cols': midCols }}>
       <div className="d-head">
@@ -672,7 +490,7 @@ function F1Detail({ sorted }) {
 }
 
 function StudyDetail({ sorted }) {
-  const max = Math.max(...sorted.map(r => r.study));
+  const max = Math.max(...sorted.map(r => r.study), 1);
   const heads = [
     { label: '#', cls: 'rank' },
     { label: 'Tên', cls: 'name' },
@@ -726,261 +544,6 @@ function Stars({ value }) {
   );
 }
 
-// ───────────────────────────── Self summary card ─────────────────────────────
-
-function SelfSummary({ rows, mode, selectedCell, setSelectedCell }) {
-  const me = rows.find(r => r.isMe);
-  if (!me) return null;
-  const ahead = rows.find(r => r.rank === me.rank - 1);
-  const gap = ahead ? Math.round(ahead.pts.total - me.pts.total) : 0;
-  const tier = me.tier;
-  const nextTier = getNextTier(me.pts.total);
-  const delta = me.delta || 0;
-
-  function onMiniClick(crit) {
-    if (selectedCell && selectedCell.rowId === me.id && selectedCell.criterion === crit) {
-      setSelectedCell(null);
-    } else {
-      setSelectedCell({ rowId: me.id, criterion: crit });
-    }
-  }
-  const openCrit = selectedCell && selectedCell.rowId === me.id ? selectedCell.criterion : null;
-
-  return (
-    <>
-      <div className="self-card card">
-        <div className="self-left">
-          <div className="self-rank-chip">
-            <div className="self-rank-num">#{me.rank}</div>
-            <div className="self-rank-of">/ {rows.length}</div>
-          </div>
-          <div>
-            <div className="self-label">Vị trí của bạn ở bảng {mode === 'ambassador' ? 'Đại sứ' : 'NCC'}</div>
-            <div className="self-name">{me.name}</div>
-            <div className="self-meta">
-              {tier && <TierBadge tier={tier} size="sm"/>}
-              <DeltaIndicator delta={delta}/>
-              <span className="self-meta-txt">
-                {delta > 0 ? 'Lên ' + delta + ' bậc so với kỳ trước'
-                  : delta < 0 ? 'Tụt ' + Math.abs(delta) + ' bậc so với kỳ trước'
-                  : 'Giữ nguyên vị trí'}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="self-mid">
-          <div className="self-stat">
-            <div className="self-stat-num">{formatPts(me.pts.total)}<span className="unit">đ</span></div>
-            <div className="self-stat-lab">Tổng điểm</div>
-          </div>
-          {ahead && (
-            <div className="self-stat self-stat--gap">
-              <div className="self-stat-num">+{formatPts(gap)}<span className="unit">đ</span></div>
-              <div className="self-stat-lab">để vượt <strong>{ahead.name}</strong></div>
-            </div>
-          )}
-          {nextTier && (
-            <div className="self-tier-progress">
-              <div className="self-tier-bar">
-                <div className="self-tier-fill" style={{ width: (nextTier.progress * 100) + '%' }}/>
-              </div>
-              <div className="self-tier-meta">
-                Còn <strong>{formatPts(nextTier.need)}đ</strong> nữa lên <span className="self-tier-name" style={{ color: nextTier.next.color }}>{nextTier.next.emoji} {nextTier.next.label}</span>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="self-right">
-          {CRITERIA.map(c => (
-            <button
-              key={c.key}
-              type="button"
-              className={'self-mini self-mini-btn' + (openCrit === c.key ? ' self-mini-btn--active' : '')}
-              onClick={() => onMiniClick(c.key)}
-              title={`Xem chi tiết ${c.label}`}
-            >
-              <div className="self-mini-ico">{c.emoji}</div>
-              <div className="self-mini-num">{formatPts(me.pts[c.key])}</div>
-              <div className="self-mini-lab">{c.short}</div>
-              <div className="self-mini-chev">{openCrit === c.key ? '▴' : '▾'}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {openCrit && (
-        <PersonDetail
-          person={me}
-          criterion={openCrit}
-          onClose={() => setSelectedCell(null)}
-        />
-      )}
-    </>
-  );
-}
-
-// ───────────────────────────── Podium (alt layout) ─────────────────────────────
-
-function Podium({ rows, allRows, mode, headerExpanded, setHeaderExpanded, selectedCell, setSelectedCell,
-  compareSelected, onToggleCompare }) {
-  const [first, second, third] = rows;
-  const rest = rows.slice(3);
-  const me = rows.find(r => r.isMe);
-  const compareFull = compareSelected && compareSelected.length >= 4;
-
-  function onCellClick(rowId, crit) {
-    if (selectedCell && selectedCell.rowId === rowId && selectedCell.criterion === crit) {
-      setSelectedCell(null);
-    } else {
-      setSelectedCell({ rowId, criterion: crit });
-    }
-  }
-
-  const top3 = [first, second, third].filter(Boolean);
-  const top3Open = top3.find(r => selectedCell && selectedCell.rowId === r.id);
-
-  return (
-    <>
-      <div className="podium-3">
-        <PodiumSpot
-          r={second} place={2}
-          onCellClick={onCellClick}
-          selectedCrit={selectedCell && selectedCell.rowId === (second && second.id) ? selectedCell.criterion : null}
-          compareSelected={compareSelected} onToggleCompare={onToggleCompare} compareFull={compareFull}
-        />
-        <PodiumSpot
-          r={first} place={1}
-          onCellClick={onCellClick}
-          selectedCrit={selectedCell && selectedCell.rowId === (first && first.id) ? selectedCell.criterion : null}
-          compareSelected={compareSelected} onToggleCompare={onToggleCompare} compareFull={compareFull}
-        />
-        <PodiumSpot
-          r={third} place={3}
-          onCellClick={onCellClick}
-          selectedCrit={selectedCell && selectedCell.rowId === (third && third.id) ? selectedCell.criterion : null}
-          compareSelected={compareSelected} onToggleCompare={onToggleCompare} compareFull={compareFull}
-        />
-      </div>
-
-      {top3Open && !top3Open.isMe && (
-        <PersonDetail
-          person={top3Open}
-          criterion={selectedCell.criterion}
-          onClose={() => setSelectedCell(null)}
-        />
-      )}
-
-      <div className="board card">
-        <div className="board-head">
-          <div className="board-title">
-            <span className="board-h">Vị trí 4 – {rows.length}</span>
-            <span className="board-sub">{rest.length} {mode === 'ambassador' ? 'đại sứ' : 'nhà cung cấp'}</span>
-          </div>
-          <CompLegend/>
-        </div>
-
-        <div className="board-table">
-          <div className="row row-head">
-            <div className="c-check"/>
-            <div className="c-rank">#</div>
-            <div className="c-name">Tên</div>
-            {CRITERIA.map(c => (
-              <button
-                key={c.key}
-                className={'c-crit head-btn' + (headerExpanded === c.key ? ' head-btn--active' : '')}
-                onClick={() => setHeaderExpanded(headerExpanded === c.key ? null : c.key)}
-                title={c.hint}
-              >
-                <span className="head-emoji">{c.emoji}</span>
-                <span className="head-label">{c.label}</span>
-                <span className="head-chev">{headerExpanded === c.key ? '▲' : '▾'}</span>
-              </button>
-            ))}
-            <div className="c-total">Tổng</div>
-          </div>
-
-          {rest.map(r => (
-            <RowGroup
-              key={r.id} r={r} mode={mode}
-              highlightKey={headerExpanded}
-              selectedCrit={selectedCell && selectedCell.rowId === r.id ? selectedCell.criterion : null}
-              onCellClick={(crit) => onCellClick(r.id, crit)}
-              onClose={() => setSelectedCell(null)}
-              compareSelected={compareSelected} onToggleCompare={onToggleCompare}
-              compareFull={compareFull}
-            />
-          ))}
-        </div>
-
-        {me && me.rank > 3 && !(selectedCell && selectedCell.rowId === me.id) && (
-          <div className="me-pin">
-            <div className="me-pin-label">Vị trí của bạn</div>
-            <Row r={me} mode={mode} highlightKey={headerExpanded}
-              selectedCrit={null}
-              onCellClick={(crit) => onCellClick(me.id, crit)}
-              compareSelected={compareSelected} onToggleCompare={onToggleCompare}
-              compareFull={compareFull}
-              isPin/>
-          </div>
-        )}
-
-        {headerExpanded && <DetailPanel rows={allRows || rows} criterion={headerExpanded} mode={mode}/>}
-      </div>
-    </>
-  );
-}
-
-function PodiumSpot({ r, place, onCellClick, selectedCrit,
-  compareSelected, onToggleCompare, compareFull }) {
-  if (!r) return <div className="podium-spot podium-spot--empty"/>;
-  const medals = { 1: 'gold', 2: 'silver', 3: 'bronze' };
-  const isSelected = compareSelected && compareSelected.includes(r.id);
-  return (
-    <div className={'podium-spot podium-spot--p' + place + (r.isMe ? ' podium-spot--me' : '') + (isSelected ? ' podium-spot--cmp' : '')}>
-      <div className="podium-spot-cb">
-        <CompareCheckbox
-          checked={isSelected}
-          disabled={!isSelected && compareFull}
-          onChange={() => onToggleCompare && onToggleCompare(r.id)}
-        />
-      </div>
-      <div className="podium-spot-top">
-        <div className={'podium-medal medal medal--' + medals[place]}>{place}</div>
-        <div className={'avatar avatar--lg avatar--' + (r.id.charCodeAt(2) % 5)}>{initials(r.name)}</div>
-      </div>
-      <div className="podium-name">
-        {r.name}
-        {r.isMe && <span className="me-chip">Bạn</span>}
-      </div>
-      <div className="podium-pts-row">
-        <div className="podium-pts">
-          {formatPts(r.pts.total)}<span className="unit">đ</span>
-        </div>
-        <DeltaIndicator delta={r.delta || 0}/>
-      </div>
-      {r.tier && (
-        <div className="podium-tier"><TierBadge tier={r.tier} size="md"/></div>
-      )}
-      <BadgeChips badges={r.badges}/>
-      <div className="podium-crits">
-        {CRITERIA.map(c => (
-          <button
-            key={c.key}
-            type="button"
-            className={'podium-crit' + (selectedCrit === c.key ? ' podium-crit--selected' : '')}
-            onClick={() => onCellClick(r.id, c.key)}
-            title={c.label + ' — bấm để xem chi tiết'}
-          >
-            <span className="podium-crit-ico">{c.emoji}</span>
-            <span className="podium-crit-val">{formatPts(r.pts[c.key])}<span className="unit">đ</span></span>
-            <span className="podium-crit-lab">{c.short}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ───────────────────────────── App ─────────────────────────────
 
 function App() {
@@ -989,13 +552,6 @@ function App() {
   const [period, setPeriod] = useState('month');
   const [headerExpanded, setHeaderExpanded] = useState(null);
   const [selectedCell, setSelectedCell] = useState(null);
-
-  // Search
-  const [searchQ, setSearchQ] = useState('');
-
-  // Compare (multi-select)
-  const [compareSelected, setCompareSelected] = useState([]);
-  const [compareOpen, setCompareOpen] = useState(false);
 
   const rows = useMemo(() => {
     const src = mode === 'ambassador' ? AMBASSADORS : SUPPLIERS;
@@ -1006,114 +562,31 @@ function App() {
     });
     scaled.sort((a, b) => b.pts.total - a.pts.total);
     scaled.forEach((r, i) => { r.rank = i + 1; });
-    // Attach per-row computed bits.
-    // cellRank[crit] = 1..5, vị trí của tiêu chí này trong dòng (1 = % cao nhất).
-    // cellPct[crit] = % đóng góp vào tổng điểm (0..100). 5 ô của 1 dòng = 100%.
-    scaled.forEach(r => {
-      r.cellPct = {};
-      for (const c of CRITERIA) {
-        r.cellPct[c.key] = r.pts.total > 0 ? r.pts[c.key] / r.pts.total * 100 : 0;
-      }
-      const ranked = [...CRITERIA].sort((a, b) => r.pts[b.key] - r.pts[a.key]);
-      r.cellRank = {};
-      ranked.forEach((c, i) => { r.cellRank[c.key] = i + 1; });
-      r.delta = getDelta(r, r.rank, scaled.length);
-      r.tier = getTier(r.pts.total);
-    });
-    // Badges depend on full set + rank already assigned
-    scaled.forEach(r => { r.badges = getBadges(r, scaled); });
     return scaled;
   }, [mode, period]);
 
-  const filteredRows = useMemo(() => {
-    const q = searchQ.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(r => r.name.toLowerCase().includes(q));
-  }, [rows, searchQ]);
-
-  function onToggleCompare(rowId) {
-    setCompareSelected(prev => {
-      if (prev.includes(rowId)) return prev.filter(x => x !== rowId);
-      if (prev.length >= 4) return prev;
-      return [...prev, rowId];
-    });
-  }
-
-  // reset expand + compare when switching mode/period
   useEffect(() => {
     setHeaderExpanded(null);
     setSelectedCell(null);
-    setCompareSelected([]);
-    setCompareOpen(false);
   }, [mode, period]);
-
-  const comparePeople = useMemo(
-    () => rows.filter(r => compareSelected.includes(r.id))
-              .sort((a, b) => compareSelected.indexOf(a.id) - compareSelected.indexOf(b.id)),
-    [rows, compareSelected]
-  );
 
   return (
     <div className={'shell' + (t.sidebar_ctx === 'ncc' ? ' shell--ncc' : '')}>
       <Sidebar ctx={t.sidebar_ctx}/>
       <main className="main">
-        <TopBar ctx={t.sidebar_ctx} period={period} setPeriod={setPeriod}/>
+        <TopBar period={period} setPeriod={setPeriod}/>
         <div className="content">
           <SelfSummary rows={rows} mode={mode}
             selectedCell={selectedCell} setSelectedCell={setSelectedCell}/>
-          <Toolbar
-            searchQ={searchQ} setSearchQ={setSearchQ}
-            totalCount={rows.length}
-            filteredCount={filteredRows.length}
+          <Leaderboard
+            rows={rows} mode={mode}
+            headerExpanded={headerExpanded} setHeaderExpanded={setHeaderExpanded}
+            selectedCell={selectedCell} setSelectedCell={setSelectedCell}
           />
-          {filteredRows.length === 0 ? (
-            <EmptyState onClear={() => setSearchQ('')}/>
-          ) : t.layout === 'table' ? (
-            <Leaderboard
-              rows={filteredRows} allRows={rows} mode={mode}
-              headerExpanded={headerExpanded} setHeaderExpanded={setHeaderExpanded}
-              selectedCell={selectedCell} setSelectedCell={setSelectedCell}
-              compareSelected={compareSelected} onToggleCompare={onToggleCompare}
-            />
-          ) : (
-            <Podium
-              rows={filteredRows} allRows={rows} mode={mode}
-              headerExpanded={headerExpanded} setHeaderExpanded={setHeaderExpanded}
-              selectedCell={selectedCell} setSelectedCell={setSelectedCell}
-              compareSelected={compareSelected} onToggleCompare={onToggleCompare}
-            />
-          )}
         </div>
       </main>
 
-      {compareSelected.length > 0 && (
-        <CompareBar
-          count={compareSelected.length}
-          onClear={() => setCompareSelected([])}
-          onOpen={() => setCompareOpen(true)}
-        />
-      )}
-
-      {compareOpen && CompareDrawer && (
-        <CompareDrawer
-          people={comparePeople}
-          onClose={() => setCompareOpen(false)}
-          onRemove={(id) => setCompareSelected(prev => prev.filter(x => x !== id))}
-        />
-      )}
-
       <TweaksPanel title="Tweaks" defaultPos={{ right: 20, bottom: 20 }}>
-        <TweakSection title="Layout">
-          <TweakRadio
-            label="Kiểu hiển thị"
-            value={t.layout}
-            options={[
-              { value: 'table',  label: 'Bảng đầy đủ' },
-              { value: 'podium', label: 'Podium top 3' },
-            ]}
-            onChange={v => setTweak('layout', v)}
-          />
-        </TweakSection>
         <TweakSection title="Sidebar context">
           <TweakRadio
             label="Hệ thống"
@@ -1132,15 +605,12 @@ function App() {
   );
 }
 
-// Floating "Tuỳ chỉnh" button — appears only when the page is served standalone
-// (e.g. GitHub Pages), where the host's edit-mode toggle isn't available.
 function StandaloneTweaksButton() {
   const [standalone, setStandalone] = useState(false);
   useEffect(() => {
     try {
       if (window.top === window.self) setStandalone(true);
     } catch (e) {
-      // cross-origin frame access throws — assume standalone
       setStandalone(true);
     }
   }, []);

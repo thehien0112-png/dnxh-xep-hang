@@ -1753,8 +1753,40 @@ body {
 
 .pd-table--orders .pd-th,
 .pd-table--orders .pd-tr {
-  grid-template-columns: 80px 90px minmax(120px, 1fr) minmax(180px, 1.5fr) 50px 90px 110px 80px;
+  grid-template-columns: 80px 90px minmax(120px, 1fr) minmax(260px, 2fr) 90px 110px 80px;
+  align-items: flex-start;
 }
+
+.pd-prods { line-height: 1.4; }
+.pd-prod-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pd-prod-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+.pd-prod-name { color: var(--text); }
+.pd-prod-qty {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 11.5px;
+}
+.pd-prod-sub {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.pd-ref { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
 .pd-table--zoom-self .pd-th,
 .pd-table--zoom-self .pd-tr {
   grid-template-columns: 90px minmax(200px, 2fr) 100px 90px 70px;
@@ -1765,7 +1797,7 @@ body {
 }
 .pd-table--f1 .pd-th,
 .pd-table--f1 .pd-tr {
-  grid-template-columns: minmax(140px, 1.4fr) minmax(100px, 1fr) 90px 130px 70px 130px 70px;
+  grid-template-columns: minmax(140px, 1.4fr) 100px 130px 70px 130px 70px;
 }
 
 .ta-c { text-align: center; }
@@ -1773,9 +1805,6 @@ body {
 
 .mono { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
 .pts { color: var(--primary); font-weight: 600; }
-
-.pd-prod { line-height: 1.3; }
-.pd-ref { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; font-style: italic; }
 
 .pd-f1-name { display: flex; align-items: center; gap: 8px; }
 

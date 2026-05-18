@@ -170,41 +170,41 @@ window.getOrderDetails = function (person) {
 
   function gen(rem, type) {
     while (rem > 600_000) {
-      const prod = pick(rand, PRODUCTS);
-      const qty = 1 + Math.floor(rand() * 6);
-      const amount = prod.unit * qty;
-      if (amount > rem * 1.2) {
-        // single small order
-        const small = prod.unit * Math.max(1, Math.min(qty, Math.ceil(rem / prod.unit)));
-        const day = 1 + Math.floor(rand() * 17);
-        orders.push({
-          orderId: 'OD' + (nextId++),
-          dayKey: day, date: dayStr(day),
-          customer: pick(rand, CUSTOMERS),
-          product: prod.name,
-          qty: Math.ceil(small / prod.unit),
-          amount: small,
-          type,
-          points: type === 'direct' ? small / 100_000 : small / 100_000 * 0.5,
-          referrer: type === 'indirect' ? 'F1 — ' + pick(rand, CUSTOMERS).split(' ').slice(-1)[0] : null,
-        });
-        rem -= small;
-        if (rem < prod.unit) break;
-      } else {
-        const day = 1 + Math.floor(rand() * 17);
-        orders.push({
-          orderId: 'OD' + (nextId++),
-          dayKey: day, date: dayStr(day),
-          customer: pick(rand, CUSTOMERS),
-          product: prod.name,
-          qty,
-          amount,
-          type,
-          points: type === 'direct' ? amount / 100_000 : amount / 100_000 * 0.5,
-          referrer: type === 'indirect' ? 'F1 — ' + pick(rand, CUSTOMERS).split(' ').slice(-1)[0] : null,
-        });
-        rem -= amount;
+      // Build a multi-item order until we accumulate roughly rem-sized batch (1..4 items)
+      const itemCount = 1 + Math.floor(rand() * 4);
+      const items = [];
+      let amount = 0;
+      for (let i = 0; i < itemCount; i++) {
+        const prod = pick(rand, PRODUCTS);
+        const qty = 1 + Math.floor(rand() * 4);
+        const subtotal = prod.unit * qty;
+        items.push({ product: prod.name, unit: prod.unit, qty, subtotal });
+        amount += subtotal;
       }
+      if (amount > rem * 1.2) {
+        // Keep just one item to fit remaining
+        const single = items[0];
+        const fitQty = Math.max(1, Math.min(single.qty, Math.ceil(rem / single.unit)));
+        single.qty = fitQty;
+        single.subtotal = single.unit * fitQty;
+        items.length = 1;
+        amount = single.subtotal;
+      }
+      const day = 1 + Math.floor(rand() * 17);
+      orders.push({
+        orderId: 'OD' + (nextId++),
+        dayKey: day, date: dayStr(day),
+        customer: pick(rand, CUSTOMERS),
+        items,
+        itemCount: items.length,
+        totalQty: items.reduce((s, it) => s + it.qty, 0),
+        amount,
+        type,
+        points: type === 'direct' ? amount / 100_000 : amount / 100_000 * 0.5,
+        referrer: type === 'indirect' ? 'F1 — ' + pick(rand, CUSTOMERS).split(' ').slice(-1)[0] : null,
+      });
+      rem -= amount;
+      if (rem < 200_000) break;
     }
   }
 

@@ -55,8 +55,7 @@ function PersonOrders({ person }) {
             <div>Mã đơn</div>
             <div>Ngày</div>
             <div>Khách hàng</div>
-            <div>Sản phẩm</div>
-            <div className="ta-c">SL</div>
+            <div>Sản phẩm trong đơn</div>
             <div className="ta-c">Loại</div>
             <div className="ta-r">Số tiền</div>
             <div className="ta-r">Điểm</div>
@@ -66,11 +65,18 @@ function PersonOrders({ person }) {
               <div className="mono">#{o.orderId}</div>
               <div>{o.date}</div>
               <div>{o.customer}</div>
-              <div className="pd-prod">
-                <div>{o.product}</div>
+              <div className="pd-prods">
+                <ul className="pd-prod-list">
+                  {o.items.map((it, idx) => (
+                    <li key={idx}>
+                      <span className="pd-prod-name">{it.product}</span>
+                      <span className="pd-prod-qty">×{it.qty}</span>
+                      <span className="pd-prod-sub mono">{formatVND(it.subtotal)}đ</span>
+                    </li>
+                  ))}
+                </ul>
                 {o.referrer && <div className="pd-ref">qua {o.referrer}</div>}
               </div>
-              <div className="ta-c">{o.qty}</div>
               <div className="ta-c">
                 <span className={'tag tag--' + o.type}>{o.type === 'direct' ? 'Trực tiếp' : 'Gián tiếp'}</span>
               </div>
@@ -189,7 +195,6 @@ function PersonF1({ person }) {
         <div className="pd-table pd-table--f1">
           <div className="pd-th">
             <div>F1</div>
-            <div>Khu vực</div>
             <div>Ngày tham gia</div>
             <div>Trạng thái</div>
             <div className="ta-c">Đơn hàng</div>
@@ -204,7 +209,6 @@ function PersonF1({ person }) {
                 </div>
                 <span>{f.name}</span>
               </div>
-              <div>{f.region}</div>
               <div>{f.joinedDate}</div>
               <div>
                 <span className={'tag tag--' + (f.status === 'Đang hoạt động' ? 'active' : 'new')}>
@@ -352,7 +356,7 @@ window.PersonDetail = function PersonDetail({ person, criterion, onClose }) {
           <span className="pd-emoji">{c.emoji}</span>
           <div className="pd-titles">
             <div className="pd-h">Chi tiết {c.label}</div>
-            <div className="pd-sub">của <strong>{person.name}</strong>{person.region ? ' · ' + person.region : ''}</div>
+            <div className="pd-sub">của <strong>{person.name}</strong></div>
           </div>
         </div>
         <div className="pd-actions">

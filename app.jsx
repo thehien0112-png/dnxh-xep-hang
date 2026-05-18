@@ -259,8 +259,8 @@ function ScoringLegend() {
 
 // ───────────────────────────── Toolbar (search, filter, compare bar) ─────────────────────────────
 
-function Toolbar({ searchQ, setSearchQ, filterRegion, setFilterRegion, regions, totalCount, filteredCount }) {
-  const isFiltering = searchQ || filterRegion !== 'all';
+function Toolbar({ searchQ, setSearchQ, totalCount, filteredCount }) {
+  const isFiltering = !!searchQ;
   return (
     <div className="toolbar card">
       <div className="toolbar-search">
@@ -276,14 +276,6 @@ function Toolbar({ searchQ, setSearchQ, filterRegion, setFilterRegion, regions, 
         )}
       </div>
 
-      <div className="toolbar-filter">
-        <label>Khu vực</label>
-        <select value={filterRegion} onChange={(e) => setFilterRegion(e.target.value)}>
-          <option value="all">Tất cả khu vực</option>
-          {regions.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-      </div>
-
       <div className="toolbar-count">
         {isFiltering ? (
           <span>Hiển thị <strong>{filteredCount}</strong> / {totalCount}</span>
@@ -291,7 +283,7 @@ function Toolbar({ searchQ, setSearchQ, filterRegion, setFilterRegion, regions, 
           <span>Tổng <strong>{totalCount}</strong></span>
         )}
         {isFiltering && (
-          <button className="toolbar-clear" onClick={() => { setSearchQ(''); setFilterRegion('all'); }}>
+          <button className="toolbar-clear" onClick={() => setSearchQ('')}>
             Bỏ lọc
           </button>
         )}
@@ -305,7 +297,7 @@ function EmptyState({ onClear }) {
     <div className="empty-state card">
       <div className="empty-emoji">📭</div>
       <div className="empty-h">Không tìm thấy ai phù hợp</div>
-      <div className="empty-sub">Thử thay đổi từ khoá hoặc bỏ lọc khu vực.</div>
+      <div className="empty-sub">Thử thay đổi từ khoá tìm kiếm.</div>
       <button className="btn btn-primary-outline" onClick={onClear}>Bỏ tất cả bộ lọc</button>
     </div>
   );
@@ -472,7 +464,7 @@ function RowGroup({ r, mode, highlightKey, selectedCrit, onCellClick, onClose,
         selectedCrit={selectedCrit} onCellClick={onCellClick}
         compareSelected={compareSelected} onToggleCompare={onToggleCompare}
         compareFull={compareFull}/>
-      {selectedCrit && (
+      {selectedCrit && !r.isMe && (
         <PersonDetail person={r} criterion={selectedCrit} onClose={onClose}/>
       )}
     </div>
@@ -514,7 +506,6 @@ function Row({ r, mode, highlightKey, selectedCrit, onCellClick, isPin,
             {r.name}
             {r.isMe && <span className="me-chip">Bạn</span>}
           </div>
-          <div className="name-sub">{r.region}</div>
           <BadgeChips badges={r.badges}/>
         </div>
       </div>
@@ -663,7 +654,6 @@ function F1Detail({ sorted }) {
   const heads = [
     { label: '#', cls: 'rank' },
     { label: 'Tên', cls: 'name' },
-    { label: 'Khu vực', cls: 'meta' },
     { label: 'F1 mời được', cls: 'num' },
     { label: 'Hệ số', cls: 'num' },
     { label: 'Tổng điểm F1', cls: 'total' },
@@ -673,7 +663,6 @@ function F1Detail({ sorted }) {
     cells: [
       <span className="rank-num">{i + 1}</span>,
       <span className="name-inline">{r.name}{r.isMe && <span className="me-chip">Bạn</span>}</span>,
-      r.region,
       r.f1 + ' người',
       '× 20 đ',
       <strong>{r.pts.f1} đ</strong>,
@@ -873,7 +862,7 @@ function Podium({ rows, allRows, mode, headerExpanded, setHeaderExpanded, select
         />
       </div>
 
-      {top3Open && (
+      {top3Open && !top3Open.isMe && (
         <PersonDetail
           person={top3Open}
           criterion={selectedCell.criterion}
@@ -963,7 +952,6 @@ function PodiumSpot({ r, place, onCellClick, selectedCrit,
         {r.name}
         {r.isMe && <span className="me-chip">Bạn</span>}
       </div>
-      <div className="podium-region">{r.region}</div>
       <div className="podium-pts-row">
         <div className="podium-pts">
           {formatPts(r.pts.total)}<span className="unit">đ</span>
@@ -1002,9 +990,8 @@ function App() {
   const [headerExpanded, setHeaderExpanded] = useState(null);
   const [selectedCell, setSelectedCell] = useState(null);
 
-  // Search + filter
+  // Search
   const [searchQ, setSearchQ] = useState('');
-  const [filterRegion, setFilterRegion] = useState('all');
 
   // Compare (multi-select)
   const [compareSelected, setCompareSelected] = useState([]);
@@ -1038,19 +1025,11 @@ function App() {
     return scaled;
   }, [mode, period]);
 
-  const regions = useMemo(
-    () => Array.from(new Set(rows.map(r => r.region))).sort((a, b) => a.localeCompare(b, 'vi')),
-    [rows]
-  );
-
   const filteredRows = useMemo(() => {
     const q = searchQ.trim().toLowerCase();
-    return rows.filter(r => {
-      if (filterRegion !== 'all' && r.region !== filterRegion) return false;
-      if (q && !r.name.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [rows, searchQ, filterRegion]);
+    if (!q) return rows;
+    return rows.filter(r => r.name.toLowerCase().includes(q));
+  }, [rows, searchQ]);
 
   function onToggleCompare(rowId) {
     setCompareSelected(prev => {
@@ -1084,13 +1063,11 @@ function App() {
             selectedCell={selectedCell} setSelectedCell={setSelectedCell}/>
           <Toolbar
             searchQ={searchQ} setSearchQ={setSearchQ}
-            filterRegion={filterRegion} setFilterRegion={setFilterRegion}
-            regions={regions}
             totalCount={rows.length}
             filteredCount={filteredRows.length}
           />
           {filteredRows.length === 0 ? (
-            <EmptyState onClear={() => { setSearchQ(''); setFilterRegion('all'); }}/>
+            <EmptyState onClear={() => setSearchQ('')}/>
           ) : t.layout === 'table' ? (
             <Leaderboard
               rows={filteredRows} allRows={rows} mode={mode}
